@@ -1,17 +1,17 @@
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movimiento")]
-    public float playerMinSpeed = 4f;   // 🔹 antes 10f
-    public float playerMaxSpeed = 7f;   // 🔹 antes 20f
+    public float playerMinSpeed = 4f; 
+    public float playerMaxSpeed = 7f; 
 
     [Header("Salto")]
-    public float jumpForce = 6f;        // 🔹 un poco más bajo que antes
-    public float fallMultiplier = 2.5f; // 🔹 más gravedad al caer
-    public float lowJumpMultiplier = 2f;// 🔹 salto más corto si sueltas espacio
+    public float jumpForce = 6f; 
+    public float fallMultiplier = 2.5f;
+    public float lowJumpMultiplier = 2f;
 
     private Rigidbody rb;
     private bool isGrounded = true;
@@ -19,50 +19,68 @@ public class PlayerMovement : MonoBehaviour
     [Header("Cámara")]
     public float sensitivity = 2f;
     public float limitX = 90f;
-    public Transform cam; 
+    public Transform cam;
 
     private float rotationX;
+
+    // Bandera para habilitar/deshabilitar rotación de cámara (mouse look)
+    private bool canRotateCamera = true;
+    // Bandera para habilitar/deshabilitar movimiento del jugador (WASD y Salto)
+    private bool canMovePlayer = true; 
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();    
-        Cursor.lockState = CursorLockMode.Locked;
+        LockCursor(); // Bloqueamos el cursor al iniciar
     }
 
     void Update()
     {
-        // Movimiento WASD
-        float x = Input.GetAxis("Horizontal");
-        float y = Input.GetAxis("Vertical");
-
-        float currentSpeed = Input.GetKey(KeyCode.LeftShift) ? playerMaxSpeed : playerMinSpeed;
-
-        Vector3 move = transform.right * x + transform.forward * y;
-        rb.velocity = new Vector3(move.x * currentSpeed, rb.velocity.y, move.z * currentSpeed);
-
-        // Salto
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
-       {
-           Jump();
-        }
-
-        // Ajuste de gravedad para que el salto sea más natural
-        if (rb.velocity.y < 0) // cayendo
+        // Solo permitir movimiento si canMovePlayer es verdadero
+        if (canMovePlayer) 
         {
-            rb.velocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.deltaTime;
+            // Movimiento WASD
+            float x = Input.GetAxis("Horizontal");
+            float y = Input.GetAxis("Vertical");
+
+            float currentSpeed = Input.GetKey(KeyCode.LeftShift) ? playerMaxSpeed : playerMinSpeed;
+
+            Vector3 move = transform.right * x + transform.forward * y;
+            // Mantenemos la velocidad vertical (rb.velocity.y) para la gravedad
+            rb.velocity = new Vector3(move.x * currentSpeed, rb.velocity.y, move.z * currentSpeed);
+
+            // Salto
+            if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+            {
+                Jump();
+            }
+
+            // Ajuste de gravedad (multiplicadores para salto más natural)
+            if (rb.velocity.y < 0) // cayendo
+            {
+                rb.velocity += Vector3.up * Physics.gravity.y * (fallMultiplier - 1) * Time.deltaTime;
+            }
+            else if (rb.velocity.y > 0 && !Input.GetKey(KeyCode.Space)) // soltó espacio
+            {
+                rb.velocity += Vector3.up * Physics.gravity.y * (lowJumpMultiplier - 1) * Time.deltaTime;
+            }
         }
-        else if (rb.velocity.y > 0 && !Input.GetKey(KeyCode.Space)) // soltó espacio
+        else
         {
-            rb.velocity += Vector3.up * Physics.gravity.y * (lowJumpMultiplier - 1) * Time.deltaTime;
+             // Si el jugador no puede moverse, detenemos el movimiento horizontal/frontal
+             rb.velocity = new Vector3(0, rb.velocity.y, 0);
         }
 
-        // Rotación cámara
-        rotationX += -Input.GetAxis("Mouse Y") * sensitivity;
-        rotationX = Mathf.Clamp(rotationX, -limitX, limitX);
-        cam.localRotation = Quaternion.Euler(rotationX, 0, 0);
+        // Rotación cámara (mouse look)
+        if (canRotateCamera)
+        {
+            rotationX += -Input.GetAxis("Mouse Y") * sensitivity;
+            rotationX = Mathf.Clamp(rotationX, -limitX, limitX);
+            cam.localRotation = Quaternion.Euler(rotationX, 0, 0);
 
-        // Rotación jugador
-        transform.Rotate(Vector3.up * Input.GetAxis("Mouse X") * sensitivity);
+            // Rotación jugador (cuerpo)
+            transform.Rotate(Vector3.up * Input.GetAxis("Mouse X") * sensitivity);
+        }
     }
 
     void Jump()
@@ -86,5 +104,33 @@ public class PlayerMovement : MonoBehaviour
         {
             isGrounded = false;
         }
+    }
+
+    // --- MÉTODOS PÚBLICOS PARA CONTROL EXTERNO ---
+
+    // Llamado para activar/desactivar el movimiento WASD y Salto
+    public void SetPlayerMovementState(bool state)
+    {
+        canMovePlayer = state;
+    }
+
+    // Llamado para activar/desactivar la rotación de la cámara (mouse look)
+    public void SetCameraRotationState(bool state)
+    {
+        canRotateCamera = state;
+    }
+
+    // Llamado para bloquear el cursor (Modo juego)
+    public void LockCursor()
+    {
+        Cursor.lockState = CursorLockMode.Locked; 
+        Cursor.visible = false; 
+    }
+
+    // Llamado para liberar el cursor (Modo menú)
+    public void UnlockCursor()
+    {
+        Cursor.lockState = CursorLockMode.None; 
+        Cursor.visible = true; 
     }
 }

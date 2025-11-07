@@ -9,6 +9,9 @@ public class Selected : MonoBehaviour
     public Texture2D puntero;
     public GameObject TextureDetect;
     GameObject ultimoReconocido = null;
+    
+    // Bandera para permitir o bloquear la detección (la clave del fix)
+    private bool canDetect = true; 
 
     void Start()
     {
@@ -18,6 +21,13 @@ public class Selected : MonoBehaviour
 
     void Update()
     {
+        // Si la detección está deshabilitada (porque el menú está abierto), salimos.
+        if (!canDetect)
+        {
+            Deselect(); // Forzamos la desactivación del mensaje
+            return;
+        }
+
         RaycastHit hit;
         if (Physics.Raycast(transform.position, transform.TransformDirection(Vector3.forward), out hit, distancia, mask))
         {
@@ -52,6 +62,17 @@ public class Selected : MonoBehaviour
         {
 
             ultimoReconocido = null;
+        }
+    }
+    
+    // Método público llamado por Interactuar.cs para detener la detección
+    public void SetDetectionState(bool state)
+    {
+        canDetect = state;
+        if (!state)
+        {
+            // Aseguramos que el indicador se oculte inmediatamente
+            TextureDetect.SetActive(false);
         }
     }
 
